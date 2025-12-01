@@ -8,35 +8,44 @@
  * @module
  */
 
+import type * as games from "../games.js";
+import type * as watchlist from "../watchlist.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
-import type * as http from "../http.js";
-import type * as paymentAttemptTypes from "../paymentAttemptTypes.js";
-import type * as paymentAttempts from "../paymentAttempts.js";
-import type * as users from "../users.js";
+
+declare const fullApi: ApiFromModules<{
+  games: typeof games;
+  watchlist: typeof watchlist;
+}>;
 
 /**
- * A utility for referencing Convex functions in your app's API.
+ * A utility for referencing Convex functions in your app's public API.
  *
  * Usage:
  * ```js
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-declare const fullApi: ApiFromModules<{
-  http: typeof http;
-  paymentAttemptTypes: typeof paymentAttemptTypes;
-  paymentAttempts: typeof paymentAttempts;
-  users: typeof users;
-}>;
 export declare const api: FilterApi<
   typeof fullApi,
   FunctionReference<any, "public">
 >;
+
+/**
+ * A utility for referencing Convex functions in your app's internal API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = internal.myModule.myFunction;
+ * ```
+ */
 export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
+
+export declare const components: {};

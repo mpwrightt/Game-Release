@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-This is a Next.js 15 SaaS starter template with integrated authentication (Clerk), real-time database (Convex), and subscription billing (Clerk Billing).
+Video Game Release Tracker built with Next.js 15, Convex (real-time database), and RAWG API for game data.
 
 ## Development Commands
 
@@ -14,85 +14,78 @@ This is a Next.js 15 SaaS starter template with integrated authentication (Clerk
 - `npm run lint` - Run Next.js linting
 
 ### Convex Development
-- `npx convex dev` - Start Convex development server (required for database)
+- `npx convex dev` - Start Convex development server (required for watchlist)
 - Run this in a separate terminal alongside `npm run dev`
 
 ## Architecture Overview
 
 ### Tech Stack
 - **Next.js 15** with App Router and Turbopack
-- **Convex** for real-time database and serverless functions
-- **Clerk** for authentication and user management
-- **Clerk Billing** for subscription payments
-- **TailwindCSS v4** with custom UI components (shadcn/ui)
+- **Convex** for real-time database (watchlist storage)
+- **RAWG API** for game data (covers, platforms, ratings, release dates)
+- **TailwindCSS v4** with shadcn/ui components
 - **TypeScript** throughout
 
 ### Key Architectural Patterns
 
-#### Authentication Flow
-1. Clerk handles all authentication via `middleware.ts`
-2. JWT tokens are configured with "convex" template in Clerk dashboard
-3. Users are synced to Convex via webhooks at `/api/clerk-users-webhook`
-4. Protected routes redirect unauthenticated users to sign-in
+#### Data Flow
+1. Game data fetched from RAWG API via `/api/games` route
+2. Watchlist stored in Convex (real-time sync)
+3. UI uses custom `useGames` hook for fetching with pagination
+4. Game details fetched on-demand when modal opens
 
-#### Database Architecture
-- **Convex** provides real-time sync and serverless functions
-- Schema defined in `convex/schema.ts`:
-  - `users` table: Synced from Clerk (externalId maps to Clerk ID)
-  - `paymentAttempts` table: Tracks subscription payments
-- All database operations in `convex/` directory
-
-#### Payment Integration
-1. Clerk Billing handles subscription management
-2. Custom pricing component in `components/custom-clerk-pricing.tsx`
-3. Payment-gated content uses `<ClerkBillingGate>` component
-4. Webhook events update payment status in Convex
+#### Database Architecture (Convex)
+- `games` table: Cached game data from RAWG
+- `watchlist` table: User's saved games to track
+- All operations in `convex/games.ts` and `convex/watchlist.ts`
 
 ### Project Structure
 ```
 app/
-├── (landing)/         # Public landing page components
-├── dashboard/         # Protected dashboard area
-│   └── payment-gated/ # Subscription-only content
-├── layout.tsx         # Root layout with providers
-└── middleware.ts      # Auth protection
+├── api/games/        # RAWG API proxy routes
+│   ├── route.ts      # List/search games
+│   └── [id]/route.ts # Single game details
+├── page.tsx          # Main releases page
+├── layout.tsx        # Root layout with providers
+└── globals.css       # Global styles
 
 components/
 ├── ui/               # shadcn/ui components
-├── custom-clerk-pricing.tsx
-└── ConvexClientProvider.tsx
+├── game-card.tsx     # Game card with watchlist toggle
+├── game-grid.tsx     # Responsive game grid
+└── game-details-dialog.tsx  # Game details modal
 
 convex/
 ├── schema.ts         # Database schema
-├── users.ts          # User CRUD operations
-├── paymentAttempts.ts # Payment tracking
-├── http.ts           # Webhook handlers
-└── auth.config.ts    # JWT configuration
+├── games.ts          # Game queries/mutations
+└── watchlist.ts      # Watchlist operations
+
+hooks/
+└── use-games.ts      # Game fetching with pagination
+
+lib/
+├── types.ts          # TypeScript interfaces
+└── utils.ts          # Utility functions
 ```
 
 ## Key Integration Points
 
 ### Environment Variables Required
-- `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL`
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
-- `NEXT_PUBLIC_CLERK_FRONTEND_API_URL` (from Clerk JWT template)
-- `CLERK_WEBHOOK_SECRET` (set in Convex dashboard)
+- `RAWG_API_KEY` - Get free at https://rawg.io/apidocs
+- `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL` (auto-set by `npx convex dev`)
 
-### Webhook Configuration
-Clerk webhooks must be configured to:
-- Endpoint: `{your_domain}/api/clerk-users-webhook`
-- Events: `user.created`, `user.updated`, `user.deleted`, `paymentAttempt.updated`
+### RAWG API
+- Base URL: `https://api.rawg.io/api`
+- Free tier: 20,000 requests/month
+- Used for: game search, upcoming releases, game details
 
-### Real-time Data Flow
-1. UI components use Convex hooks (`useQuery`, `useMutation`)
-2. Convex provides automatic real-time updates
-3. Authentication context from `useAuth()` (Clerk)
-4. User data synced between Clerk and Convex
+### Convex Queries/Mutations
+- `watchlist.list` - Get all watchlist items
+- `watchlist.add` / `watchlist.remove` - Manage watchlist
+- `watchlist.isInWatchlist` - Check if game is saved
+- `games.upcoming` / `games.recentlyReleased` - Cached game queries
 
-## Shadcn Component Installation Rules
+## Shadcn Component Installation
 When installing shadcn/ui components:
-- ALWAYS use `bunx --bun shadcn@latest add [component-name]` instead of `npx`
-- If dependency installation fails, manually install with `bun install [dependency-name]`
-- Check components.json for existing configuration before installing
-- Verify package.json after installation to ensure dependencies were added
-- Multiple components can be installed at once: `bunx --bun shadcn@latest add button card drawer`
+- Use `bunx --bun shadcn@latest add [component-name]`
+- Multiple: `bunx --bun shadcn@latest add button card dialog`
